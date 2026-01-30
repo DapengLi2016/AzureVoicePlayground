@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AzureSettings, WordBoundary, SynthesisState } from '../types/azure';
 import { HistoryEntry } from '../types/history';
 import { useAzureTTS } from '../hooks/useAzureTTS';
+import { useWERTest } from '../hooks/useWERTest';
 import { VoiceSelector, SelectedVoiceInfo } from './VoiceSelector';
 import { TextInput } from './TextInput';
 import { PlaybackControls } from './PlaybackControls';
@@ -54,6 +55,16 @@ export function TextToSpeechPlayground({
   const { state, error, wordBoundaries, currentWordIndex, audioData, synthesize, pause, resume, stop } =
     useAzureTTS(settings);
 
+  // WER Test hook
+  const {
+    state: werTestState,
+    result: werTestResult,
+    error: werTestError,
+    progress: werTestProgress,
+    runTest: runWERTest,
+    reset: resetWERTest
+  } = useWERTest(settings);
+
   // Update text when voice changes between HD and non-HD voices
   useEffect(() => {
     const currentVoice = settings.selectedVoice || '';
@@ -76,6 +87,13 @@ export function TextToSpeechPlayground({
   // Get current language from selected voice or preset selection
   const currentLanguage = getLanguageFromVoice(settings.selectedVoice);
   const synthesisLocale = selectedPresetLanguage || currentLanguage || 'en-US';
+
+  // Handler for WER test button
+  const handleRunWERTest = useCallback(() => {
+    if (text.trim()) {
+      runWERTest(text, synthesisLocale);
+    }
+  }, [text, synthesisLocale, runWERTest]);
 
   // Add to history when synthesis completes successfully with NEW audio
   useEffect(() => {
@@ -160,6 +178,12 @@ export function TextToSpeechPlayground({
               onPause={pause}
               onResume={resume}
               onStop={stop}
+              werTestState={werTestState}
+              werTestResult={werTestResult}
+              werTestError={werTestError}
+              werTestProgress={werTestProgress}
+              onRunWERTest={handleRunWERTest}
+              onResetWERTest={resetWERTest}
             />
           </div>
         </div>
