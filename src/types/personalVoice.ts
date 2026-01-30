@@ -88,3 +88,12 @@ export const PERSONAL_VOICE_MODELS: { id: PersonalVoiceModel; name: string; desc
   { id: 'DragonLatestNeural', name: 'Dragon (Latest)', description: 'High quality personal voice' },
   { id: 'PhoenixLatestNeural', name: 'Phoenix (Latest)', description: 'Supports word boundary events' },
 ];
+
+// Base model from API
+export interface BaseModel {
+  name: string;
+  description: string;
+  releaseDateTime: string;
+  expirationDateTime?: string;
+  capabilities: string[];
+}
