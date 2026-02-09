@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AudioRecorder } from './AudioRecorder';
 import {
   type PersonalVoice,
-  type PersonalVoiceModel,
   type VoiceCreationConfig,
   type Consent,
+  type BaseModel,
   DEFAULT_VOICE_CREATION_CONFIG,
   SUPPORTED_LOCALES,
   PERSONAL_VOICE_MODELS,
@@ -12,6 +12,7 @@ import {
 import {
   listPersonalVoices,
   listConsents,
+  listBaseModels,
   createProject,
   getProject,
   createConsent,
@@ -72,7 +73,9 @@ I can speak different languages.
 こんにちは、これは私の個人音声です。
 Hola, esta es mi voz personal.
 Bonjour, ceci est ma voix personnelle.`);
-  const [testModel, setTestModel] = useState<PersonalVoiceModel>('DragonLatestNeural');
+  const [testModel, setTestModel] = useState<string>('DragonLatestNeural');
+  const [baseModels, setBaseModels] = useState<BaseModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [synthesisError, setSynthesisError] = useState<string | null>(null);
   const [showSsml, setShowSsml] = useState(false);
@@ -94,6 +97,28 @@ Bonjour, ceci est ma voix personnelle.`);
     localStorage.setItem('voicecreation.config', JSON.stringify(config));
   }, [config]);
 
+  // Load base models on mount
+  const loadBaseModels = useCallback(async () => {
+    if (!isConfigured) return;
+
+    setIsLoadingModels(true);
+    try {
+      const models = await listBaseModels(clientConfig);
+      console.log('[VoiceCreation] Base models from API:', models);
+      setBaseModels(models);
+      // Set default model if current selection is not in the list
+      if (models.length > 0 && !models.find(m => m.name === testModel)) {
+        setTestModel(models[0].name);
+      }
+    } catch (error) {
+      console.error('Failed to load base models:', error);
+      // Fall back to hardcoded models if API fails
+      setBaseModels([]);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  }, [isConfigured, settings.apiKey, settings.region]);
+
   // Load voices and consents on mount
   const loadVoices = useCallback(async () => {
     if (!isConfigured) return;
@@ -114,8 +139,9 @@ Bonjour, ceci est ma voix personnelle.`);
   }, [isConfigured, settings.apiKey, settings.region, config.projectId]);
 
   useEffect(() => {
+    loadBaseModels();
     loadVoices();
-  }, [loadVoices]);
+  }, [loadBaseModels, loadVoices]);
 
   // Ensure project exists
   const ensureProject = async () => {
@@ -565,18 +591,30 @@ Bonjour, ceci est ma voix personnelle.`);
                   {selectedVoice ? (
                     <div className="flex-1 min-h-0 flex flex-col gap-3">
                       <div className="flex gap-3 items-end flex-shrink-0">
-                        <div className="w-36">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Model</label>
+                        <div className="w-48">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Model {isLoadingModels && <span className="text-gray-400">(loading...)</span>}
+                          </label>
                           <select
                             value={testModel}
-                            onChange={(e) => setTestModel(e.target.value as PersonalVoiceModel)}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                            onChange={(e) => setTestModel(e.target.value)}
+                            disabled={isLoadingModels}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-gray-100"
                           >
-                            {PERSONAL_VOICE_MODELS.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.name}
-                              </option>
-                            ))}
+                            {baseModels.length > 0 ? (
+                              baseModels.map((m) => (
+                                <option key={m.name} value={m.name}>
+                                  {m.name}
+                                </option>
+                              ))
+                            ) : (
+                              // Fall back to hardcoded models if API fails
+                              PERSONAL_VOICE_MODELS.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.name}
+                                </option>
+                              ))
+                            )}
                           </select>
                         </div>
                         <button

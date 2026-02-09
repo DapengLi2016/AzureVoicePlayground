@@ -1,4 +1,16 @@
 import { VoiceInfo } from '../types/azure';
+import { isChinaRegion } from './azureSpeechConfig';
+
+/**
+ * Gets the voice list REST API endpoint for a given region
+ */
+function getVoiceListEndpoint(region: string): string {
+  const r = region.toLowerCase();
+  if (isChinaRegion(r)) {
+    return `https://${r}.tts.speech.azure.cn/cognitiveservices/voices/list`;
+  }
+  return `https://${r}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
+}
 
 export async function fetchVoiceList(
   apiKey: string,
@@ -17,7 +29,8 @@ export async function fetchVoiceList(
     console.log('=======================');
 
     // Use Azure REST API instead of SDK to avoid the locale.toLowerCase bug
-    const url = `https://${region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
+    const url = getVoiceListEndpoint(region);
+    console.log('Voice list URL:', url);
 
     const response = await fetch(url, {
       headers: {

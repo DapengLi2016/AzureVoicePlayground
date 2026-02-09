@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk';
 import { AzureSettings, WordBoundary, SynthesisState } from '../types/azure';
 import { buildPersonalVoiceSsml } from '../lib/personalVoice/personalVoiceClient';
+import { createSpeechConfig } from '../utils/azureSpeechConfig';
 
 export function useAzureTTS(settings: AzureSettings) {
   const [state, setState] = useState<SynthesisState>('idle');
@@ -41,10 +42,8 @@ export function useAzureTTS(settings: AzureSettings) {
     console.log('Initializing synthesizer with voice:', currentSettings.selectedVoice, 'isPersonalVoice:', isPersonalVoice);
     console.log('personalVoiceInfo:', currentSettings.personalVoiceInfo);
 
-    const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-      currentSettings.apiKey,
-      currentSettings.region
-    );
+    // Determine the correct endpoint based on region
+    const speechConfig = createSpeechConfig(currentSettings.apiKey, currentSettings.region);
 
     // For personal voices, don't set the voice name - let SSML handle it
     // For regular voices, set the voice name

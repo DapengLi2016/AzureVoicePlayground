@@ -6,6 +6,7 @@ import { AzureSettings } from '../types/azure';
 import { RealtimeTranscript, TranscriptSegment, WordTiming } from '../types/transcription';
 import { STTState } from '../types/stt';
 import { convertToWav16kHz } from '../utils/audioConversion';
+import { createSTTSpeechConfig } from '../utils/azureSpeechConfig';
 
 // Languages supported for auto-detection (Language Identification)
 // Use one locale per language as per Azure documentation
@@ -59,10 +60,7 @@ export function useRealtimeSTT(settings: AzureSettings): UseRealtimeSTTReturn {
       const wavBlob = await convertToWav16kHz(audioSource);
 
       // Initialize Speech SDK
-      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-        settings.apiKey,
-        settings.region
-      );
+      const speechConfig = createSTTSpeechConfig(settings.apiKey, settings.region);
 
       // Enable detailed output for word-level timestamps
       speechConfig.outputFormat = SpeechSDK.OutputFormat.Detailed;

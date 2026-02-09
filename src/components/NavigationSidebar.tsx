@@ -51,6 +51,9 @@ const ALL_TTS_REGIONS = [
   { value: 'qatarcentral', label: 'Qatar Central' },
   { value: 'southafricanorth', label: 'South Africa North' },
   { value: 'uaenorth', label: 'UAE North' },
+
+  // China
+  { value: 'chinanorth3', label: 'China North 3' },
 ];
 
 const playgroundModes: { mode: PlaygroundMode; label: string; icon: React.ReactNode; category: 'content' | 'agent' }[] = [

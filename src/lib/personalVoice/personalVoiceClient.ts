@@ -10,6 +10,7 @@ import type {
   PersonalVoice,
   CreateConsentParams,
   CreatePersonalVoiceParams,
+  BaseModel,
 } from '../../types/personalVoice';
 
 const API_VERSION = '2024-02-01-preview';
@@ -58,6 +59,22 @@ async function handleResponse<T>(response: Response): Promise<T> {
     return undefined as T;
   }
   return response.json();
+}
+
+// ============ Base Models ============
+
+export async function listBaseModels(config: PersonalVoiceClientConfig): Promise<BaseModel[]> {
+  const url = `${getBaseUrl(config.region)}/basemodels?api-version=${API_VERSION}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getHeaders(config.apiKey),
+  });
+  const data = await handleResponse<{ value: BaseModel[] } | BaseModel[]>(response);
+  console.log('[PersonalVoice] Raw base models response:', data);
+  // Handle both array and object with value property
+  const models = Array.isArray(data) ? data : (data.value || []);
+  // Filter to only models with PersonalVoice capability
+  return models.filter((m) => m.capabilities?.includes('PersonalVoice'));
 }
 
 // ============ Projects ============

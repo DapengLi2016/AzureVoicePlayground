@@ -9,6 +9,7 @@ import { AzureSettings } from '../types/azure';
 import { calculateWER, WERResult } from '../utils/werCalculation';
 import { convertToWav16kHz } from '../utils/audioConversion';
 import { buildPersonalVoiceSsml } from '../lib/personalVoice/personalVoiceClient';
+import { createSpeechConfig } from '../utils/azureSpeechConfig';
 
 export type WERTestState = 'idle' | 'synthesizing' | 'transcribing' | 'completed' | 'error';
 
@@ -53,10 +54,7 @@ export function useWERTest(settings: AzureSettings): UseWERTestReturn {
 
       // Step 1: Synthesize audio
       const audioData = await new Promise<ArrayBuffer>((resolve, reject) => {
-        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-          settings.apiKey,
-          settings.region
-        );
+        const speechConfig = createSpeechConfig(settings.apiKey, settings.region);
 
         const isPersonalVoice = settings.personalVoiceInfo?.isPersonalVoice &&
                                 settings.personalVoiceInfo?.speakerProfileId;

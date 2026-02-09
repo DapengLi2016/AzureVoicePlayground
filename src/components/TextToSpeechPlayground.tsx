@@ -9,7 +9,8 @@ import { PlaybackControls } from './PlaybackControls';
 import { FeedbackButton } from './FeedbackButton';
 import { HistoryPanel } from './HistoryPanel';
 import { getAudioDuration } from '../utils/audioUtils';
-import { PERSONAL_VOICE_MODELS, PersonalVoiceModel } from '../types/personalVoice';
+import { PERSONAL_VOICE_MODELS, PersonalVoiceModel, BaseModel } from '../types/personalVoice';
+import { listBaseModels } from '../lib/personalVoice/personalVoiceClient';
 import { getLanguageFromVoice } from '../utils/languagePresets';
 import { useFeatureFlags } from '../hooks/useFeatureFlags';
 
@@ -52,6 +53,10 @@ export function TextToSpeechPlayground({
   const previousAudioDataRef = useRef<ArrayBuffer | null>(null);
   const previousVoiceRef = useRef<string>('');
 
+  // Base models from API
+  const [baseModels, setBaseModels] = useState<BaseModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+
   const { state, error, wordBoundaries, currentWordIndex, audioData, synthesize, pause, resume, stop } =
     useAzureTTS(settings);
 
@@ -83,6 +88,27 @@ export function TextToSpeechPlayground({
 
     previousVoiceRef.current = currentVoice;
   }, [settings.selectedVoice, text]);
+
+  // Load base models from API when personal voice is selected
+  useEffect(() => {
+    if (!isConfigured || !settings.personalVoiceInfo?.isPersonalVoice) return;
+
+    const loadModels = async () => {
+      setIsLoadingModels(true);
+      try {
+        const models = await listBaseModels({ apiKey: settings.apiKey, region: settings.region });
+        console.log('[TTS] Base models from API:', models);
+        setBaseModels(models);
+      } catch (error) {
+        console.error('Failed to load base models:', error);
+        setBaseModels([]);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+
+    loadModels();
+  }, [isConfigured, settings.apiKey, settings.region, settings.personalVoiceInfo?.isPersonalVoice]);
 
   // Get current language from selected voice or preset selection
   const currentLanguage = getLanguageFromVoice(settings.selectedVoice);
@@ -247,6 +273,7 @@ export function TextToSpeechPlayground({
           <div className="mt-4 pt-4 border-t border-gray-200">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Voice Model
+              {isLoadingModels && <span className="ml-2 text-xs text-gray-500">(Loading...)</span>}
             </label>
             <select
               value={settings.personalVoiceInfo?.model || 'DragonLatestNeural'}
@@ -259,12 +286,21 @@ export function TextToSpeechPlayground({
                 });
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={isLoadingModels}
             >
-              {PERSONAL_VOICE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name} - {m.description}
-                </option>
-              ))}
+              {baseModels.length > 0 ? (
+                baseModels.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name} - {m.description}
+                  </option>
+                ))
+              ) : (
+                PERSONAL_VOICE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} - {m.description}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         )}

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk';
 import { AzureSettings } from '../types/azure';
 import { MultiTalkerState, buildMultiTalkerSSML } from '../types/multiTalker';
+import { createSpeechConfig } from '../utils/azureSpeechConfig';
 
 interface UseMultiTalkerTTSProps {
   apiKey: string;
@@ -28,7 +29,7 @@ export function useMultiTalkerTTS({ apiKey, region }: UseMultiTalkerTTSProps) {
 
     console.log('Initializing multi-talker synthesizer with voice:', voiceName);
 
-    const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(apiKey, region);
+    const speechConfig = createSpeechConfig(apiKey, region);
     // For SSML, we don't set the voice name here - it's in the SSML
     speechConfig.speechSynthesisOutputFormat =
       SpeechSDK.SpeechSynthesisOutputFormat.Audio48Khz192KBitRateMonoMp3;
