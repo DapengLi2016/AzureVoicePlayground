@@ -307,6 +307,7 @@ export class VoiceLiveChatClient {
       turnDetection: {
         type: config.turnDetectionType,
         removeFillerWords: config.removeFillerWords,
+        createResponse: !config.asrOnly,
       },
       temperature,
       inputAudioNoiseReduction: config.useNoiseSuppression

@@ -935,6 +935,17 @@ export function VoiceLiveChatPlayground({ endpoint, apiKey }: VoiceLiveChatPlayg
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
+                      checked={config.asrOnly}
+                      onChange={(e) => setConfig((c) => ({ ...c, asrOnly: e.target.checked }))}
+                      disabled={isConnected}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">ASR only (skip LLM response)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
                       checked={config.removeFillerWords}
                       onChange={(e) => setConfig((c) => ({ ...c, removeFillerWords: e.target.checked }))}
                       disabled={isConnected || config.turnDetectionType !== 'azure_semantic_vad'}

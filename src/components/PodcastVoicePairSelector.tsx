@@ -13,33 +13,49 @@ interface PodcastVoicePairSelectorProps {
   disabled?: boolean;
 }
 
-// Hardcoded voice pairs for en-US using DragonHDLatestNeural
-// Female speakers: ava, ada, emma, jane
-// Male speakers: andrew, brian, davis, steffan
-const EN_US_VOICE_PAIRS: VoicePair[] = [
-  // Ava combinations
-  { female: 'ava', male: 'andrew', display: 'Ava & Andrew' },
-  { female: 'ava', male: 'brian', display: 'Ava & Brian' },
-  { female: 'ava', male: 'davis', display: 'Ava & Davis' },
-  { female: 'ava', male: 'steffan', display: 'Ava & Steffan' },
+interface VoiceGroup {
+  voiceName: string;
+  label: string;
+  pairs: VoicePair[];
+}
 
-  // Ada combinations
-  { female: 'ada', male: 'andrew', display: 'Ada & Andrew' },
-  { female: 'ada', male: 'brian', display: 'Ada & Brian' },
-  { female: 'ada', male: 'davis', display: 'Ada & Davis' },
-  { female: 'ada', male: 'steffan', display: 'Ada & Steffan' },
+const VOICE_GROUPS: VoiceGroup[] = [
+  {
+    voiceName: 'en-US-Multitalker-Set1:DragonHDLatestNeural',
+    label: 'en-US-Multitalker-Set1:DragonHDLatestNeural',
+    pairs: [
+      // Ava combinations
+      { female: 'ava', male: 'andrew', display: 'Ava & Andrew' },
+      { female: 'ava', male: 'brian', display: 'Ava & Brian' },
+      { female: 'ava', male: 'davis', display: 'Ava & Davis' },
+      { female: 'ava', male: 'steffan', display: 'Ava & Steffan' },
 
-  // Emma combinations
-  { female: 'emma', male: 'andrew', display: 'Emma & Andrew' },
-  { female: 'emma', male: 'brian', display: 'Emma & Brian' },
-  { female: 'emma', male: 'davis', display: 'Emma & Davis' },
-  { female: 'emma', male: 'steffan', display: 'Emma & Steffan' },
+      // Ada combinations
+      { female: 'ada', male: 'andrew', display: 'Ada & Andrew' },
+      { female: 'ada', male: 'brian', display: 'Ada & Brian' },
+      { female: 'ada', male: 'davis', display: 'Ada & Davis' },
+      { female: 'ada', male: 'steffan', display: 'Ada & Steffan' },
 
-  // Jane combinations
-  { female: 'jane', male: 'andrew', display: 'Jane & Andrew' },
-  { female: 'jane', male: 'brian', display: 'Jane & Brian' },
-  { female: 'jane', male: 'davis', display: 'Jane & Davis' },
-  { female: 'jane', male: 'steffan', display: 'Jane & Steffan' },
+      // Emma combinations
+      { female: 'emma', male: 'andrew', display: 'Emma & Andrew' },
+      { female: 'emma', male: 'brian', display: 'Emma & Brian' },
+      { female: 'emma', male: 'davis', display: 'Emma & Davis' },
+      { female: 'emma', male: 'steffan', display: 'Emma & Steffan' },
+
+      // Jane combinations
+      { female: 'jane', male: 'andrew', display: 'Jane & Andrew' },
+      { female: 'jane', male: 'brian', display: 'Jane & Brian' },
+      { female: 'jane', male: 'davis', display: 'Jane & Davis' },
+      { female: 'jane', male: 'steffan', display: 'Jane & Steffan' },
+    ],
+  },
+  {
+    voiceName: 'zh-CN-Multitalker-Xiaochen-Yunhan:DragonHDLatestNeural',
+    label: 'zh-CN-Multitalker-Xiaochen-Yunhan:DragonHDLatestNeural',
+    pairs: [
+      { female: 'xiaochen', male: 'yunhan', display: 'Xiaochen & Yunhan' },
+    ],
+  },
 ];
 
 export function PodcastVoicePairSelector({
@@ -50,23 +66,24 @@ export function PodcastVoicePairSelector({
 }: PodcastVoicePairSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Get available pairs for the selected locale
-  const availablePairs = useMemo(() => {
-    // Voice pairs are available for all locales
-    return EN_US_VOICE_PAIRS;
-  }, []);
-
-  // Apply search filter
-  const filteredPairs = useMemo(() => {
-    if (!searchTerm) return availablePairs;
+  // Filter groups/pairs by search term
+  const filteredGroups = useMemo(() => {
+    if (!searchTerm) return VOICE_GROUPS;
 
     const searchLower = searchTerm.toLowerCase();
-    return availablePairs.filter(pair =>
-      pair.display.toLowerCase().includes(searchLower) ||
-      pair.female.toLowerCase().includes(searchLower) ||
-      pair.male.toLowerCase().includes(searchLower)
-    );
-  }, [availablePairs, searchTerm]);
+    return VOICE_GROUPS.map(group => ({
+      ...group,
+      pairs: group.pairs.filter(pair =>
+        pair.display.toLowerCase().includes(searchLower) ||
+        pair.female.toLowerCase().includes(searchLower) ||
+        pair.male.toLowerCase().includes(searchLower) ||
+        group.voiceName.toLowerCase().includes(searchLower)
+      ),
+    })).filter(group => group.pairs.length > 0);
+  }, [searchTerm]);
+
+  const totalPairs = VOICE_GROUPS.reduce((sum, g) => sum + g.pairs.length, 0);
+  const filteredCount = filteredGroups.reduce((sum, g) => sum + g.pairs.length, 0);
 
   return (
     <div className="space-y-2">
@@ -88,59 +105,60 @@ export function PodcastVoicePairSelector({
           <div className="text-xs text-purple-600 font-medium">Selected:</div>
           <div className="text-sm text-purple-800">{selectedPair.display}</div>
           <div className="text-xs text-purple-600 mt-0.5">
-            Female: {selectedPair.female} | Male: {selectedPair.male}
+            {selectedPair.female} &amp; {selectedPair.male}
           </div>
         </div>
       )}
 
-      {/* Voice Pair List */}
+      {/* Voice Pair List grouped by voice name */}
       <div className="border border-gray-200 rounded-md max-h-64 overflow-y-auto">
-        {filteredPairs.length === 0 && (
+        {filteredGroups.length === 0 && (
           <div className="p-4 text-center text-gray-500 text-sm">
             {searchTerm ? 'No voice pairs found matching search' : 'No voice pairs available'}
           </div>
         )}
 
-        {filteredPairs.map((pair, index) => (
-          <button
-            key={`${pair.female}-${pair.male}`}
-            onClick={() => onPairChange(pair)}
-            disabled={disabled}
-            className={`w-full px-4 py-3 text-left border-b border-gray-100 last:border-b-0 transition-colors ${
-              selectedPair?.female === pair.female && selectedPair?.male === pair.male
-                ? 'bg-purple-50 border-l-4 border-l-purple-600'
-                : 'hover:bg-gray-50'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-800">
-                    {pair.display}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Female: <span className="text-pink-600 font-medium">{pair.female}</span> |
-                  Male: <span className="text-blue-600 font-medium"> {pair.male}</span>
-                </div>
-              </div>
-              {selectedPair?.female === pair.female && selectedPair?.male === pair.male && (
-                <svg className="w-5 h-5 text-purple-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
+        {filteredGroups.map((group) => (
+          <div key={group.voiceName}>
+            <div className="px-4 py-1.5 bg-gray-100 text-xs font-semibold text-gray-600 sticky top-0">
+              {group.label}
             </div>
-          </button>
+            {group.pairs.map((pair) => (
+              <button
+                key={`${group.voiceName}-${pair.female}-${pair.male}`}
+                onClick={() => onPairChange(pair)}
+                disabled={disabled}
+                className={`w-full px-4 py-3 text-left border-b border-gray-100 last:border-b-0 transition-colors ${
+                  selectedPair?.female === pair.female && selectedPair?.male === pair.male
+                    ? 'bg-purple-50 border-l-4 border-l-purple-600'
+                    : 'hover:bg-gray-50'
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-800">
+                      {pair.display}
+                    </span>
+                  </div>
+                  {selectedPair?.female === pair.female && selectedPair?.male === pair.male && (
+                    <svg className="w-5 h-5 text-purple-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
         ))}
       </div>
 
       <div className="text-xs text-gray-500">
-        {filteredPairs.length} voice pair{filteredPairs.length !== 1 ? 's' : ''} available
-        {searchTerm && ` (filtered from ${availablePairs.length})`}
+        {filteredCount} voice pair{filteredCount !== 1 ? 's' : ''} available
+        {searchTerm && ` (filtered from ${totalPairs})`}
       </div>
     </div>
   );
@@ -153,9 +171,13 @@ export function getVoiceDetails(pair: VoicePair | null, locale: string): {
 } | null {
   if (!pair) return null;
 
-  // Voice name is empty - service will use default voice
+  // Find which voice group this pair belongs to
+  const group = VOICE_GROUPS.find(g =>
+    g.pairs.some(p => p.female === pair.female && p.male === pair.male)
+  );
+
   return {
-    voiceName: '',
+    voiceName: group?.voiceName || '',
     speakerNames: `${pair.female},${pair.male}`,
   };
 }

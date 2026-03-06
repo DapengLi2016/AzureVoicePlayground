@@ -21,6 +21,7 @@ export interface VoiceLiveChatConfig {
   voice: string;
   recognitionLanguage: string;
   turnDetectionType: 'server_vad' | 'azure_semantic_vad';
+  asrOnly: boolean;
   removeFillerWords: boolean;
   useNoiseSuppression: boolean;
   useEchoCancellation: boolean;
@@ -49,6 +50,7 @@ export const DEFAULT_CHAT_CONFIG: VoiceLiveChatConfig = {
   voice: 'en-us-ava:DragonHDLatestNeural',
   recognitionLanguage: 'auto',
   turnDetectionType: 'server_vad',
+  asrOnly: false,
   removeFillerWords: false,
   useNoiseSuppression: false,
   useEchoCancellation: false,
