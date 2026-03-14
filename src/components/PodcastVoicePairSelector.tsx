@@ -21,8 +21,8 @@ interface VoiceGroup {
 
 const VOICE_GROUPS: VoiceGroup[] = [
   {
-    voiceName: 'en-US-Multitalker-Set1:DragonHDLatestNeural',
-    label: 'en-US-Multitalker-Set1:DragonHDLatestNeural',
+    voiceName: 'en-Multitalker-1:DragonHDLatestNeural',
+    label: 'en-Multitalker-1:DragonHDLatestNeural (Default)',
     pairs: [
       // Ava combinations
       { female: 'ava', male: 'andrew', display: 'Ava & Andrew' },
