@@ -12,6 +12,8 @@ import {
   PodcastContentSource,
   PodcastContent,
   TempFile,
+  MAX_PLAIN_TEXT_LENGTH,
+  MAX_BASE64_TEXT_LENGTH,
 } from '../../types/podcast';
 
 const API_VERSION = '2026-01-01-preview';
@@ -60,7 +62,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 /**
  * Convert a File object to base64 string
  */
-async function fileToBase64(file: File): Promise<string> {
+export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -76,40 +78,95 @@ async function fileToBase64(file: File): Promise<string> {
 
 /**
  * Prepare content payload based on source type
+ * Strategy:
+ * - Text <= 1MB: uses 'text' property (inline)
+ * - Text > 1MB and <= 8MB: uses 'base64Text' property
+ * - Files/Text > 8MB: uploads as temp file via temp file API, uses 'tempFileId'
+ * - URL: uses 'url' property with detected file format
  */
 export async function prepareContentPayload(
+  config: PodcastApiConfig,
   source: PodcastContentSource
 ): Promise<PodcastContent> {
-  if (source.type === 'text') {
-    return {
-      kind: 'PlainText',
-      text: source.text,
-      fileFormat: 'Txt',
-    };
+  console.log('Preparing content payload...');
+
+  if (source.text) {
+    const textLength = (source.text || '').length;
+    const textBytes = new Blob([source.text || '']).size;
+
+    console.log(`Text content: ${textLength} chars, ${textBytes} bytes`);
+
+    if (textBytes <= MAX_PLAIN_TEXT_LENGTH) {
+      // Use text directly for content <= 1MB
+      console.log('Using inline text (<=1MB)');
+      return {
+        text: source.text,
+        fileFormat: 'Txt',
+      };
+    } else {
+      // Convert to base64 first to check its size
+      const textBlob = new Blob([source.text || ''], { type: 'text/plain' });
+      const textFile = new File([textBlob], 'content.txt', { type: 'text/plain' });
+      const base64Text = await fileToBase64(textFile);
+
+      if (base64Text.length <= MAX_BASE64_TEXT_LENGTH) {
+        // Use base64 for content where base64 size <= 8MB
+        console.log(`Using base64Text (${base64Text.length} bytes, <=8MB)`);
+        return {
+          base64Text,
+          fileFormat: 'Txt',
+        };
+      } else {
+        // Upload as temp file for content where base64 size > 8MB
+        console.log(`Uploading as temp file (${base64Text.length} bytes, >8MB)`);
+        const tempFileId = createTempFileId();
+        await uploadTempFile(config, textFile, tempFileId, 120); // 2 hour expiry
+        return {
+          tempFileId,
+          fileFormat: 'Txt',
+        };
+      }
+    }
   }
 
-  if (source.type === 'url') {
+  if (source.url) {
     // Detect file format from URL
     const urlLower = source.url!.toLowerCase();
     const isPdf = urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
 
+    console.log(`Using URL: ${source.url}, Format: ${isPdf ? 'Pdf' : 'Txt'}`);
     return {
-      kind: 'AzureStorageBlobPublicUrl',
       url: source.url,
       fileFormat: isPdf ? 'Pdf' : 'Txt',
     };
   }
 
-  if (source.type === 'file' && source.file) {
-    // Convert file to base64
-    const base64Text = await fileToBase64(source.file);
+  if (source.file) {
     const isPdf = source.file.type === 'application/pdf' || source.file.name.toLowerCase().endsWith('.pdf');
+    const fileFormat = isPdf ? 'Pdf' : 'Txt';
 
-    return {
-      kind: 'FileBase64',
-      base64Text,
-      fileFormat: isPdf ? 'Pdf' : 'Txt',
-    };
+    console.log(`File upload: ${source.file.name}, Size: ${source.file.size} bytes, Format: ${fileFormat}`);
+
+    if (source.file.size <= MAX_BASE64_TEXT_LENGTH) {
+      // Use base64 for files <= 8MB
+      console.log('Using base64Text for file (<=8MB)');
+      const base64Text = await fileToBase64(source.file);
+      return {
+        base64Text,
+        fileFormat,
+      };
+    } else if (source.file.size <= 50 * 1024 * 1024) {
+      // Upload as temp file for files > 8MB and <= 50MB
+      console.log('Uploading file as temp file (>8MB, <=50MB)');
+      const tempFileId = createTempFileId();
+      await uploadTempFile(config, source.file, tempFileId, 120); // 2 hour expiry
+      return {
+        tempFileId,
+        fileFormat,
+      };
+    } else {
+      throw new Error('File size exceeds maximum limit of 50MB');
+    }
   }
 
   throw new Error('Invalid content source');
@@ -117,6 +174,8 @@ export async function prepareContentPayload(
 
 /**
  * Upload a temporary file using multipart/form-data
+ * API: POST /api/podcast/tempfiles/{tempFileId}
+ * Content-Type: multipart/form-data
  */
 export async function uploadTempFile(
   config: PodcastApiConfig,
@@ -128,17 +187,23 @@ export async function uploadTempFile(
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('expiresAfterInMins', expiresAfterInMins.toString());
+  // Backend expects ExpiresAfterInMins (PascalCase) as form field
+  formData.append('ExpiresAfterInMins', expiresAfterInMins.toString());
+
+  console.log(`Uploading temp file: ${file.name} (${(file.size / 1024).toFixed(2)} KB), ID: ${tempFileId}, Expires: ${expiresAfterInMins} mins`);
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Ocp-Apim-Subscription-Key': config.apiKey,
+      // Note: Do NOT set Content-Type header - browser will set it automatically with boundary
     },
     body: formData,
   });
 
-  return handleResponse<TempFile>(response);
+  const tempFile = await handleResponse<TempFile>(response);
+  console.log(`Temp file uploaded successfully. ID: ${tempFile.id}, Expires: ${tempFile.expiresDateTime}`);
+  return tempFile;
 }
 
 /**
@@ -177,6 +242,8 @@ export async function deleteTempFile(
 
 /**
  * Create a podcast generation
+ * API: PUT /api/podcast/generations/{generationId}
+ * Content-Type: application/json
  */
 export async function createGeneration(
   config: PodcastApiConfig,
@@ -186,7 +253,7 @@ export async function createGeneration(
 
   const operationId = crypto.randomUUID();
 
-  // Build request body with only defined fields
+  // Build request body matching backend PodcastGeneration DTO structure
   const body: Record<string, unknown> = {
     locale: params.locale,
     host: params.host,
@@ -197,12 +264,20 @@ export async function createGeneration(
     body.displayName = params.displayName;
   }
 
+  if (params.description !== undefined) {
+    body.description = params.description;
+  }
+
   if (params.scriptGeneration !== undefined) {
     body.scriptGeneration = params.scriptGeneration;
   }
 
   if (params.tts !== undefined) {
     body.tts = params.tts;
+  }
+
+  if (params.advancedConfig !== undefined) {
+    body.advancedConfig = params.advancedConfig;
   }
 
   console.log('Creating podcast generation:', params.generationId);
@@ -219,6 +294,7 @@ export async function createGeneration(
   // Get operation location from header
   const operationLocation = response.headers.get('Operation-Location') || '';
 
+  console.log(`Generation created: ${generation.id}, Status: ${generation.status}`);
   return { generation, operationLocation };
 }
 
@@ -326,4 +402,40 @@ export function createGenerationId(): string {
  */
 export function createTempFileId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * Enhanced content preparation with temp file tracking
+ * Returns both the content payload and the temp file ID if one was created
+ */
+export async function prepareContentWithTracking(
+  config: PodcastApiConfig,
+  source: PodcastContentSource
+): Promise<{ content: PodcastContent; tempFileId?: string }> {
+  const content = await prepareContentPayload(config, source);
+  return {
+    content,
+    tempFileId: content.tempFileId,
+  };
+}
+
+/**
+ * Safely delete temp file with error handling
+ */
+export async function safeDeleteTempFile(
+  config: PodcastApiConfig,
+  tempFileId: string | undefined
+): Promise<void> {
+  if (!tempFileId) {
+    return;
+  }
+
+  try {
+    console.log(`Cleaning up temp file: ${tempFileId}`);
+    await deleteTempFile(config, tempFileId);
+    console.log(`Temp file deleted successfully: ${tempFileId}`);
+  } catch (error) {
+    // Log but don't throw - temp file cleanup is best-effort
+    console.warn(`Failed to delete temp file ${tempFileId}:`, error);
+  }
 }

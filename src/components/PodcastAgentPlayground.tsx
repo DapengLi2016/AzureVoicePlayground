@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AzureSettings } from '../types/azure';
 import { PodcastContentUploader } from './PodcastContentUploader';
 import { PodcastVoicePairSelector, getVoiceDetails } from './PodcastVoicePairSelector';
+import { ALL_TTS_REGIONS } from './NavigationSidebar';
 import { usePodcastGeneration } from '../hooks/usePodcastGeneration';
 import { PodcastVideoRenderer } from '../lib/podcast/videoRenderer';
 import {
@@ -29,11 +30,18 @@ interface PodcastAgentPlaygroundProps {
   clearHistory: () => void;
 }
 
-// Podcast Agent supported regions (similar to Video Translation)
+// Podcast Agent supported regions
 const SUPPORTED_REGIONS = [
-  'eastus',
   'westeurope',
-  'southeastasia',
+  'centralus',
+  'eastus',
+  'eastus2',
+  'northcentralus',
+  'southcentralus',
+  'westcentralus',
+  'westus',
+  'westus2',
+  'westus3',
 ];
 
 // Common locales for podcast generation
@@ -278,7 +286,8 @@ export function PodcastAgentPlayground({
   };
 
   const isProcessing = ['uploading', 'creating', 'processing'].includes(status);
-  const isRegionSupported = SUPPORTED_REGIONS.includes(settings.region.toLowerCase());
+  // Skip region validation for custom regions containing "-" (e.g., TIP environments)
+  const isRegionSupported = settings.region.includes('-') || SUPPORTED_REGIONS.includes(settings.region.toLowerCase());
   const canStart =
     isConfigured &&
     isRegionSupported &&
@@ -338,15 +347,14 @@ export function PodcastAgentPlayground({
                       Podcast Agent is currently only available in the following regions:
                     </p>
                     <ul className="text-sm text-amber-700 mt-2 list-disc list-inside">
-                      <li>
-                        <strong>East US</strong> (eastus)
-                      </li>
-                      <li>
-                        <strong>West Europe</strong> (westeurope)
-                      </li>
-                      <li>
-                        <strong>Southeast Asia</strong> (southeastasia)
-                      </li>
+                      {SUPPORTED_REGIONS.map((regionValue) => {
+                        const regionInfo = ALL_TTS_REGIONS.find(r => r.value === regionValue);
+                        return (
+                          <li key={regionValue}>
+                            {regionInfo ? `${regionInfo.label} (${regionValue})` : regionValue}
+                          </li>
+                        );
+                      })}
                     </ul>
                     <p className="text-sm text-amber-700 mt-2">
                       Your current region: <strong>{settings.region}</strong>. Please change your region

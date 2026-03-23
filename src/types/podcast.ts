@@ -5,7 +5,6 @@
 export type HostType = 'OneHost' | 'TwoHosts';
 export type PodcastStyle = 'Default' | 'Professional' | 'Casual';
 export type PodcastLength = 'VeryShort' | 'Short' | 'Medium' | 'Long' | 'VeryLong';
-export type PodcastContentKind = 'PlainText' | 'AzureStorageBlobPublicUrl' | 'FileBase64';
 export type FileFormat = 'Txt' | 'Pdf';
 export type OperationStatus = 'NotStarted' | 'Running' | 'Succeeded' | 'Failed';
 export type GenerationStatus =
@@ -18,34 +17,40 @@ export type GenerationStatus =
   | 'cancelled';
 
 export interface PodcastContent {
-  kind: PodcastContentKind;
-  text?: string;           // For PlainText (max 1MB)
+  text?: string;           // For PlainText <= 1MB
   url?: string;            // For AzureStorageBlobPublicUrl
-  base64Text?: string;     // For FileBase64 (max 8MB)
-  tempFileId?: string;     // For temp file upload
-  fileFormat?: FileFormat; // For URL or base64
-}
-
-export interface ScriptGeneration {
-  additionalInstructions?: string;
-  length?: PodcastLength;
-  style?: PodcastStyle;
+  base64Text?: string;     // For content > 1MB and <= 8MB (base64 encoded)
+  tempFileId?: string;     // For content > 8MB (uploaded via temp file API)
+  fileFormat?: FileFormat; // File format (Txt or Pdf)
 }
 
 export interface PodcastTTS {
   voiceName?: string;                    // e.g., "en-us-multitalker-set1:DragonHDLatestNeural"
   multiTalkerVoiceSpeakerNames?: string; // e.g., "ava,andrew"
-  genderPreference?: 'Male' | 'Female';  // For OneHost
+  genderPreference?: 'Male' | 'Female';  // For OneHost mode
+}
+
+export interface AdvancedConfig {
+  keepIntermediateZipFile?: boolean;     // Keep intermediate files for debugging
+}
+
+export interface ScriptGeneration {
+  additionalInstructions?: string;       // Custom instructions for script generation
+  template?: string;                    // Script template
+  length?: PodcastLength;               // Desired podcast length
+  style?: PodcastStyle;                 // Podcast style
 }
 
 export interface CreateGenerationParams {
   generationId: string;
   locale: string;
   host: HostType;
-  displayName: string;
+  displayName?: string;
+  description?: string;
   content: PodcastContent;
   scriptGeneration?: ScriptGeneration;
   tts?: PodcastTTS;
+  advancedConfig?: AdvancedConfig;
 }
 
 export interface PodcastOutput {
@@ -62,15 +67,12 @@ export interface Generation {
   status: OperationStatus;
   createdDateTime: string;
   lastActionDateTime?: string;
-  content?: {
-    url?: string;
-    kind?: string;
-  };
-  config?: {
-    locale?: string;
-  };
+  content?: PodcastContent;
+  scriptGeneration?: ScriptGeneration;
+  tts?: PodcastTTS;
   output?: PodcastOutput;
   failureReason?: string;
+  advancedConfig?: AdvancedConfig;
 }
 
 export interface OperationResponse {
@@ -98,7 +100,6 @@ export interface GenerationProgress {
 }
 
 export interface PodcastContentSource {
-  type: 'file' | 'url' | 'text';
   file?: File;
   url?: string;
   text?: string;
@@ -137,6 +138,10 @@ export interface TempFile {
   createdDateTime: string;
   expiresDateTime: string;
   sizeInBytes: number;
+  status?: string;  // Optional status field
+  links?: {         // Optional links object
+    contentUrl?: string;
+  };
 }
 
 // Size limits (in bytes)

@@ -11,7 +11,8 @@ import {
 import {
   createGeneration,
   waitForGenerationComplete,
-  prepareContentPayload,
+  prepareContentWithTracking,
+  safeDeleteTempFile,
   createGenerationId,
 } from '../lib/podcast/podcastClient';
 
@@ -44,6 +45,8 @@ export function usePodcastGeneration({ apiKey, region }: UsePodcastGenerationOpt
     speakerNames?: string,
     addToHistory?: (entry: Omit<PodcastHistoryEntry, 'id'>) => void
   ) => {
+    let tempFileId: string | undefined;
+
     try {
       // Reset state
       setError(null);
@@ -56,11 +59,18 @@ export function usePodcastGeneration({ apiKey, region }: UsePodcastGenerationOpt
       const apiConfig = getApiConfig();
       const generationId = createGenerationId();
 
-      // Step 1: Prepare content payload
-      const content = await prepareContentPayload(contentSource);
+      // Step 1: Prepare content payload with temp file tracking
+      const { content, tempFileId: createdTempFileId } = await prepareContentWithTracking(apiConfig, contentSource);
+      tempFileId = createdTempFileId;
+
+      if (tempFileId) {
+        console.log(`Temp file created: ${tempFileId}`);
+      }
 
       if (cancelRef.current) {
         setStatus('cancelled');
+        // Cleanup temp file if created
+        await safeDeleteTempFile(apiConfig, tempFileId);
         return;
       }
 
@@ -94,6 +104,8 @@ export function usePodcastGeneration({ apiKey, region }: UsePodcastGenerationOpt
 
       if (cancelRef.current) {
         setStatus('cancelled');
+        // Cleanup temp file if created
+        await safeDeleteTempFile(apiConfig, tempFileId);
         return;
       }
 
@@ -122,10 +134,14 @@ export function usePodcastGeneration({ apiKey, region }: UsePodcastGenerationOpt
 
       if (cancelRef.current) {
         setStatus('cancelled');
+        // Cleanup temp file if created
+        await safeDeleteTempFile(apiConfig, tempFileId);
         return;
       }
 
-      // Step 5: Complete
+      // Step 5: Complete - Clean up temp file after successful generation
+      await safeDeleteTempFile(apiConfig, tempFileId);
+
       setProgress({ step: 5, totalSteps: 5, message: 'Completed!' });
       setStatus('completed');
       setCurrentGeneration(completedGeneration);
@@ -158,6 +174,10 @@ export function usePodcastGeneration({ apiKey, region }: UsePodcastGenerationOpt
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       console.error('Podcast generation failed:', err);
+
+      // Cleanup temp file on error
+      const apiConfig = getApiConfig();
+      await safeDeleteTempFile(apiConfig, tempFileId);
 
       if (errorMessage.includes('Cancelled')) {
         setStatus('cancelled');
