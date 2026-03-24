@@ -20,6 +20,15 @@ import {
 const API_VERSION = '2026-01-01-preview';
 
 function getBaseUrl(region: string): string {
+  // Check if region is a custom URL (for local debugging)
+  if (region.startsWith('http://') || region.startsWith('https://')) {
+    // Remove trailing slash if present
+    const baseUrl = region.endsWith('/') ? region.slice(0, -1) : region;
+    // Append /podcast to the custom URL
+    return `${baseUrl}/podcast`;
+  }
+  
+  // Standard Azure region format
   return `https://${region}.api.cognitive.microsoft.com/podcast`;
 }
 
@@ -82,8 +91,8 @@ export async function fileToBase64(file: File): Promise<string> {
  * Strategy:
  * - Text <= 1MB: uses 'text' property (inline)
  * - Text > 1MB: uploads as temp file, uses 'tempFileId' property
- * - File (PDF) <= 8MB: uses 'base64Text' property
- * - File > 8MB: uploads as temp file, uses 'tempFileId' property
+ * - File: converts to base64, if base64 size <= 8MB: uses 'base64Text' property
+ * - File: if base64 > 8MB but file size <= 50MB: uploads as temp file, uses 'tempFileId' property
  * - URL: uses 'url' property with detected file format
  * Note: base64Text is only for file uploads (especially PDFs), not for text input
  */
@@ -99,7 +108,7 @@ export async function prepareContentPayload(
 
     console.log(`Text content: ${textLength} chars, ${textBytes} bytes`);
 
-    if (textBytes <= MAX_PLAIN_TEXT_LENGTH) {
+    if (textLength <= MAX_PLAIN_TEXT_LENGTH) {
       // Use text directly for content <= 1MB
       console.log('Using inline text (<=1MB)');
       return {
@@ -140,17 +149,19 @@ export async function prepareContentPayload(
 
     console.log(`File upload: ${source.file.name}, Size: ${source.file.size} bytes, Format: ${fileFormat}`);
 
-    if (source.file.size <= MAX_BASE64_TEXT_LENGTH) {
-      // Use base64 for files <= 8MB
-      console.log('Using base64Text for file (<=8MB)');
-      const base64Text = await fileToBase64(source.file);
+    // Convert to base64 first to check actual encoded size
+    const base64Text = await fileToBase64(source.file);
+    
+    if (base64Text.length <= MAX_BASE64_TEXT_LENGTH) {
+      // Use base64 for files where base64 size <= 8MB
+      console.log(`Using base64Text for file (base64 size: ${base64Text.length} bytes, <=8MB)`);
       return {
         base64Text,
         fileFormat,
       };
     } else if (source.file.size <= MAX_CONTENT_FILE_SIZE) {
-      // Upload as temp file for files > 8MB and <= 50MB
-      console.log('Uploading file as temp file (>8MB, <=50MB)');
+      // Upload as temp file for files where base64 > 8MB but file size <= 50MB
+      console.log(`Uploading file as temp file (file size: ${source.file.size} bytes, >8MB base64, <=50MB)`);
       const tempFileId = createTempFileId();
       await uploadTempFile(config, source.file, tempFileId, 120); // 2 hour expiry
       return {

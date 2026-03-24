@@ -286,8 +286,11 @@ export function PodcastAgentPlayground({
   };
 
   const isProcessing = ['uploading', 'creating', 'processing'].includes(status);
-  // Skip region validation for custom regions containing "-" (e.g., TIP environments)
-  const isRegionSupported = settings.region.includes('-') || SUPPORTED_REGIONS.includes(settings.region.toLowerCase());
+  // Skip region validation for:
+  // 1. Custom regions containing "-" (e.g., TIP environments like "eastus-tip")
+  // 2. Custom URLs starting with http:// or https:// (e.g., "https://localhost:44311/api")
+  const isCustomUrl = settings.region.startsWith('http://') || settings.region.startsWith('https://');
+  const isRegionSupported = isCustomUrl || settings.region.includes('-') || SUPPORTED_REGIONS.includes(settings.region.toLowerCase());
   const canStart =
     isConfigured &&
     isRegionSupported &&
@@ -359,6 +362,9 @@ export function PodcastAgentPlayground({
                     <p className="text-sm text-amber-700 mt-2">
                       Your current region: <strong>{settings.region}</strong>. Please change your region
                       in the sidebar settings.
+                    </p>
+                    <p className="text-sm text-amber-700 mt-2">
+                      <strong>Note:</strong> For local debugging, you can also use a custom URL (e.g., <code className="bg-amber-100 px-1 rounded">https://localhost:44311/api</code>).
                     </p>
                   </div>
                 </div>
