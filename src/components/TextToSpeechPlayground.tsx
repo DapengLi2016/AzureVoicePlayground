@@ -50,6 +50,8 @@ export function TextToSpeechPlayground({
 
   const [text, setText] = useState(defaultText);
   const [selectedPresetLanguage, setSelectedPresetLanguage] = useState<string>('');
+  const [ssmlMode, setSsmlMode] = useState(false);
+  const [ssmlText, setSsmlText] = useState('');
   const previousAudioDataRef = useRef<ArrayBuffer | null>(null);
   const previousVoiceRef = useRef<string>('');
 
@@ -160,7 +162,11 @@ export function TextToSpeechPlayground({
   }, [audioData, text, settings.selectedVoice, settings.region, settings.personalVoiceInfo, addToHistory]);
 
   const handlePlay = () => {
-    synthesize(text, synthesisLocale);
+    if (ssmlMode && ssmlText.trim()) {
+      synthesize(text, synthesisLocale, ssmlText);
+    } else {
+      synthesize(text, synthesisLocale);
+    }
   };
 
   return (
@@ -189,6 +195,10 @@ export function TextToSpeechPlayground({
               personalVoiceInfo={settings.personalVoiceInfo}
               selectedPresetLanguage={selectedPresetLanguage}
               onPresetLanguageChange={setSelectedPresetLanguage}
+              ssmlMode={ssmlMode}
+              onSsmlModeChange={setSsmlMode}
+              ssmlText={ssmlText}
+              onSsmlTextChange={setSsmlText}
             />
           </div>
 
