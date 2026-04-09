@@ -17,6 +17,7 @@ import { VoiceCreationPlayground } from './components/VoiceCreationPlayground';
 import { VideoTranslationPlayground } from './components/VideoTranslationPlayground';
 import { PodcastAgentPlayground } from './components/PodcastAgentPlayground';
 import { GeminiLivePlayground } from './components/GeminiLivePlayground';
+import { PodcastPlayer } from './components/PodcastPlayer';
 
 // Valid playground modes for URL hash routing
 const VALID_MODES: PlaygroundMode[] = [
@@ -179,8 +180,13 @@ function App() {
         geminiLiveEnabled={geminiLiveEnabled}
       />
 
-      {/* Main Playground Area */}
-      {renderPlayground()}
+      {/* Main Playground Area with Podcast Player */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex overflow-hidden">
+          {renderPlayground()}
+        </div>
+        <PodcastPlayer mode={activePlayground} />
+      </div>
     </div>
   );
 }
