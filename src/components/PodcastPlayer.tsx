@@ -146,7 +146,11 @@ export function PodcastPlayer({ mode }: PodcastPlayerProps) {
       {/* Collapsed bar — always visible */}
       <div className="flex items-center gap-3 px-4 py-2">
         {/* Podcast branding text */}
-        <span className="text-xs font-semibold bg-gradient-to-r from-purple-700 to-blue-600 bg-clip-text text-transparent whitespace-nowrap flex-shrink-0">
+        <span className="text-xs font-semibold bg-gradient-to-r from-purple-700 to-blue-600 bg-clip-text text-transparent whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+          <svg className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 1a5 5 0 00-5 5v6a5 5 0 0010 0V6a5 5 0 00-5-5z" />
+            <path d="M19 10v2a7 7 0 01-14 0v-2H3v2a9 9 0 004 7.46V22H8v2h8v-2h-3v-2.54A9 9 0 0021 12v-2h-2z" />
+          </svg>
           Podcast: {MODE_TO_LABEL[mode]} Introduction
         </span>
         {/* Expand/collapse toggle */}

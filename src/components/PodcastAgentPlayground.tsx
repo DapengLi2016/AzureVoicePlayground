@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AzureSettings } from '../types/azure';
+import { ProductIntroduction } from './ProductIntroduction';
 import { PodcastContentUploader } from './PodcastContentUploader';
 import { PodcastOneHostVoiceSelector } from './PodcastOneHostVoiceSelector';
 import { PodcastTwoHostsVoiceSelector } from './PodcastTwoHostsVoiceSelector';
@@ -1157,6 +1158,9 @@ export function PodcastAgentPlayground({
           </div>
         </div>
       </div>
+
+      {/* Product Introduction */}
+      <ProductIntroduction mode="podcast-agent" />
 
       {/* History Panel */}
       <div className="border-t border-gray-200">

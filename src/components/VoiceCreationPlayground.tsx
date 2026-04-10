@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AudioRecorder } from './AudioRecorder';
+import { ProductIntroduction } from './ProductIntroduction';
 import {
   type PersonalVoice,
   type VoiceCreationConfig,
@@ -1006,6 +1007,8 @@ ${ssml}
             </>
           )}
         </div>
+        {/* Product Introduction */}
+        <ProductIntroduction mode="voice-creation" />
       </div>
 
       {/* Right Panel - Voice List */}
