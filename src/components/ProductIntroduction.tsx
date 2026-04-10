@@ -332,7 +332,7 @@ export function ProductIntroduction({ mode }: ProductIntroductionProps) {
               </div>
             )}
             {markdown !== null && markdown !== '' && (
-              <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }} />
+              <div className="MSTTSPlayerContentSource prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }} />
             )}
             {markdown === '' && !isLoading && (
               <p className="text-sm text-gray-400 py-4">Introduction document not available.</p>
