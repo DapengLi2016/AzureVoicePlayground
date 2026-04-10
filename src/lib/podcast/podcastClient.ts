@@ -494,10 +494,10 @@ function getTtsBaseUrl(region: string): string {
  * Get base URL for ACC versions API
  */
 function getAccVersionsUrl(region: string): string {
-  // Handle custom URL (for local debugging)
+  // Handle custom URL (for local debugging) — local APIs don't have the "acc" segment
   if (region.startsWith('http://') || region.startsWith('https://')) {
     const baseUrl = region.endsWith('/') ? region.slice(0, -1) : region;
-    return `${baseUrl}/texttospeech/acc/v3.0-beta1/VoiceGeneralTask/versions`;
+    return `${baseUrl}/texttospeech/v3.0-beta1/VoiceGeneralTask/versions`;
   }
   
   // Standard Azure region format
