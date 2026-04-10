@@ -177,28 +177,51 @@ export async function prepareContentPayload(
     const isMd = source.file.name.toLowerCase().endsWith('.md');
     const fileFormat = isPdf ? 'Pdf' : isMd ? 'Md' : 'Txt';
 
-    // Convert to base64 first to check actual encoded size
-    const base64Text = await fileToBase64(source.file);
-    
-    if (base64Text.length <= MAX_BASE64_TEXT_LENGTH) {
-      // Use base64 for files where base64 size <= 8MB
-      return {
-        base64Text,
-        fileFormat,
-      };
-    } else if (source.file.size <= MAX_CONTENT_FILE_SIZE) {
-      // Upload as temp file for files where base64 > 8MB but file size <= 50MB
-      if (onProgress) {
-        onProgress(`Uploading file ${source.file.name} (${(source.file.size / 1024 / 1024).toFixed(1)} MB)...`);
+    if (isPdf) {
+      // PDF files use base64 encoding
+      const base64Text = await fileToBase64(source.file);
+
+      if (base64Text.length <= MAX_BASE64_TEXT_LENGTH) {
+        return {
+          base64Text,
+          fileFormat,
+        };
+      } else if (source.file.size <= MAX_CONTENT_FILE_SIZE) {
+        if (onProgress) {
+          onProgress(`Uploading file ${source.file.name} (${(source.file.size / 1024 / 1024).toFixed(1)} MB)...`);
+        }
+        const tempFileId = createTempFileId();
+        await uploadTempFile(config, source.file, tempFileId, 120);
+        return {
+          tempFileId,
+          fileFormat,
+        };
+      } else {
+        throw new Error(`File size exceeds maximum limit of ${(MAX_CONTENT_FILE_SIZE / 1024 / 1024).toFixed(0)}MB`);
       }
-      const tempFileId = createTempFileId();
-      await uploadTempFile(config, source.file, tempFileId, 120); // 2 hour expiry
-      return {
-        tempFileId,
-        fileFormat,
-      };
     } else {
-      throw new Error(`File size exceeds maximum limit of ${(MAX_CONTENT_FILE_SIZE / 1024 / 1024).toFixed(0)}MB`);
+      // .md and .txt files: read as text and use the text property (same as inline text)
+      const text = await source.file.text();
+      const textBytes = new Blob([text]).size;
+
+      if (text.length <= MAX_PLAIN_TEXT_LENGTH) {
+        return {
+          text,
+          fileFormat,
+        };
+      } else if (textBytes <= MAX_CONTENT_FILE_SIZE) {
+        if (onProgress) {
+          onProgress(`Uploading file ${source.file.name} (${(textBytes / 1024).toFixed(0)} KB)...`);
+        }
+        const tempFileId = createTempFileId();
+        await uploadTempFile(config, source.file, tempFileId, 120);
+        return {
+          tempFileId,
+          fileFormat,
+        };
+      } else {
+        throw new Error(`File size exceeds maximum limit of ${(MAX_CONTENT_FILE_SIZE / 1024 / 1024).toFixed(0)}MB`);
+      }
     }
   }
 
