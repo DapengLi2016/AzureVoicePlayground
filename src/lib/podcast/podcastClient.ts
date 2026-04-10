@@ -20,6 +20,9 @@ import {
 
 const API_VERSION = '2026-01-01-preview';
 
+/** Minimum ACC API version that supports Markdown (.md) file format */
+export const MD_FORMAT_MIN_VERSION = '1.3.8';
+
 function getBaseUrl(region: string): string {
   // Check if region is a custom URL (for local debugging)
   if (region.startsWith('http://') || region.startsWith('https://')) {
@@ -161,16 +164,18 @@ export async function prepareContentPayload(
     // Detect file format from URL
     const urlLower = source.url!.toLowerCase();
     const isPdf = urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
+    const isMd = urlLower.endsWith('.md') || urlLower.includes('.md?');
 
     return {
       url: source.url,
-      fileFormat: isPdf ? 'Pdf' : 'Txt',
+      fileFormat: isPdf ? 'Pdf' : isMd ? 'Md' : 'Txt',
     };
   }
 
   if (source.file) {
     const isPdf = source.file.type === 'application/pdf' || source.file.name.toLowerCase().endsWith('.pdf');
-    const fileFormat = isPdf ? 'Pdf' : 'Txt';
+    const isMd = source.file.name.toLowerCase().endsWith('.md');
+    const fileFormat = isPdf ? 'Pdf' : isMd ? 'Md' : 'Txt';
 
     // Convert to base64 first to check actual encoded size
     const base64Text = await fileToBase64(source.file);
@@ -503,7 +508,7 @@ function getAccVersionsUrl(region: string): string {
  * Query ACC API version
  * Returns version string like "1.3.7" or null if unavailable
  */
-async function queryAccVersion(
+export async function queryAccVersion(
   config: PodcastApiConfig
 ): Promise<string | null> {
   try {
@@ -541,7 +546,7 @@ async function queryAccVersion(
  * Compare version strings (e.g., "1.3.7" >= "1.3.7")
  * Returns true if version1 >= version2
  */
-function compareVersions(version1: string, version2: string): boolean {
+export function compareVersions(version1: string, version2: string): boolean {
   const v1Parts = version1.split('.').map(Number);
   const v2Parts = version2.split('.').map(Number);
   
@@ -570,32 +575,11 @@ function compareVersions(version1: string, version2: string): boolean {
  * The locale in a multitalker voice name (e.g., "en-US-multitalker") indicates
  * the speaker's origin locale, not the synthesis target language.
  * Therefore, multitalker voices are NOT filtered by the locale parameter.
- * 
- * Version Check: This API requires ACC version >= 1.3.7
  */
 export async function queryVoices(
   config: PodcastApiConfig,
   locale?: string
 ): Promise<Voice[]> {
-  // Check ACC API version first
-  const REQUIRED_VERSION = '1.3.7';
-  const currentVersion = await queryAccVersion(config);
-  
-  if (!currentVersion) {
-    console.warn('Could not determine ACC API version. Voice list may not be available. Returning empty array to allow Auto mode or manual input.');
-    return [];
-  }
-  
-  const versionSufficient = compareVersions(currentVersion, REQUIRED_VERSION);
-  
-  if (!versionSufficient) {
-    // Voice list API not available in this region/environment yet
-    // Return empty array to allow Auto mode or manual voice input
-    const warnMsg = `Voice list API requires ACC version ${REQUIRED_VERSION} or higher. Current version: ${currentVersion}. Voice dropdown will be empty, but you can still use Auto mode or enter voice names manually.`;
-    console.warn(warnMsg);
-    return [];
-  }
-  
   const url = getTtsBaseUrl(config.region);
   
   const headers: Record<string, string> = {
